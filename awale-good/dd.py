@@ -4,28 +4,8 @@ from tkinter import *
 
 import numpy as np
 
-class QLearningAgent:
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
-        self.alpha = alpha  # learning rate
-        self.gamma = gamma  # discount factor
-        self.epsilon = epsilon  # exploration rate
-        self.Q = {}  # Q-table
-
-    def get_Q(self, state, action):
-        return self.Q.get((state, action), 0.0)
-
-    def choose_action(self, state, available_actions):
-        if np.random.uniform(0, 1) < self.epsilon:
-            return np.random.choice(available_actions)
-        else:
-            q_values = [self.get_Q(state, action) for action in available_actions]
-            return available_actions[np.argmax(q_values)]
-
-    def learn(self, state, action, reward, next_state, next_actions):
-        current_Q = self.get_Q(state, action)
-        next_max_Q = max([self.get_Q(next_state, next_action) for next_action in next_actions], default=0)
-        self.Q[(state, action)] = current_Q + self.alpha * (reward + self.gamma * next_max_Q - current_Q)
-
+from QLearningAgent import QLearningAgent
+from agents.RandomAgent import RandomAgent
 
 class Partie(object):
     """Gère l'ensemble des opérations sur les grains"""
@@ -160,6 +140,8 @@ class Application(Tk):
 
         self.agent1 = QLearningAgent()
         self.agent2 = QLearningAgent()
+        self.random_agent = RandomAgent()
+
         self.play_with_agents()
         
     def debut_jeu(self):        # Au début d'une partie
@@ -197,7 +179,7 @@ class Application(Tk):
                 self.couronne()
 
         if not self.p.fin:
-            self.after(1000, self.play_with_agents)
+            self.after(200, self.play_with_agents)
         self.update_ui()
 
     def play_with_agents(self):
@@ -207,16 +189,20 @@ class Application(Tk):
             if self.p.joueur1:
                 action = self.agent1.choose_action(state, available_actions)
             else:
-                action = self.agent2.choose_action(state, available_actions)
+                # Utilisez l'agent aléatoire pour le joueur 2
+                action = self.random_agent.choose_action(state, available_actions)
+            
             reward = self.p.coup(action)
             next_state = self.p.get_state()
             next_actions = self.p.get_available_actions()
+            
             if self.p.joueur1:
                 self.agent1.learn(state, action, reward, next_state, next_actions)
-            else:
-                self.agent2.learn(state, action, reward, next_state, next_actions)
+            # Pas besoin d'apprendre pour l'agent aléatoire
+            
             self.update_ui()
-            self.after(1000, self.play_with_agents)  # Continuez à jouer après 1 seconde
+            self.after(200, self.play_with_agents)  # Continuez à jouer après 1 seconde
+
     
     def ecrire_nombres(self, liste):    # Écrit les graines
         for i in self.ids_nombres:
