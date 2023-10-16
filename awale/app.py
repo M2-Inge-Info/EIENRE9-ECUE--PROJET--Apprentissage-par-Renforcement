@@ -1,6 +1,30 @@
 import tkinter as tk
 from tkinter import messagebox
 
+import numpy as np
+
+class QLearningAgent:
+    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
+        self.alpha = alpha  # learning rate
+        self.gamma = gamma  # discount factor
+        self.epsilon = epsilon  # exploration rate
+        self.Q = {}  # Q-table
+
+    def get_Q(self, state, action):
+        return self.Q.get((state, action), 0.0)
+
+    def choose_action(self, state, available_actions):
+        if np.random.uniform(0, 1) < self.epsilon:
+            return np.random.choice(available_actions)
+        else:
+            q_values = [self.get_Q(state, action) for action in available_actions]
+            return available_actions[np.argmax(q_values)]
+
+    def learn(self, state, action, reward, next_state, next_actions):
+        current_Q = self.get_Q(state, action)
+        next_max_Q = max([self.get_Q(next_state, next_action) for next_action in next_actions])
+        self.Q[(state, action)] = current_Q + self.alpha * (reward + self.gamma * next_max_Q - current_Q)
+
 
 class AwaleGame:
     def __init__(self, master):
@@ -31,16 +55,32 @@ class AwaleGame:
 
         # Création des trous
         self.hole_buttons = [None] * 12  # Initialise la liste avec 12 éléments None
-        for i in range(11, -1, -1):  # Inverse l'ordre de création des trous
+
+        # Pour les trous du joueur 2 (en haut)
+        for i in range(6):
             hole = tk.Canvas(board_frame, width=60, height=60, bg=self.hole_color, highlightthickness=0)
-            hole.grid(row=i//6, column=i%6, padx=10, pady=10)
+            hole.grid(row=0, column=i, padx=10, pady=10)
             hole.bind("<Button-1>", lambda event, i=i: self.on_hole_click(i))
             self.hole_buttons[i] = hole  # Affecte le trou à l'index approprié
             self.draw_seeds(i)
 
-        # Affichage du score
+        # Pour les trous du joueur 1 (en bas)
+        for i in range(11, 5, -1):
+            hole = tk.Canvas(board_frame, width=60, height=60, bg=self.hole_color, highlightthickness=0)
+            hole.grid(row=1, column=11-i, padx=10, pady=10)
+            hole.bind("<Button-1>", lambda event, i=i: self.on_hole_click(i))
+            self.hole_buttons[i] = hole  # Affecte le trou à l'index approprié
+            self.draw_seeds(i)
+
+    # Affichage du score
         self.score_label = tk.Label(self.master, text="Score: 0 - 0", bg=self.bg_color, font=("Arial", 16))
         self.score_label.pack(pady=20)
+
+        # Ajout de l'affichage du tour
+        turn_label_text = "Joueur 1" if self.current_player == 0 else "Joueur 2"
+        self.turn_label = tk.Label(self.master, text=f"Tour de {turn_label_text}", bg=self.bg_color, font=("Arial", 16))
+        self.turn_label.pack(pady=20)
+
 
 
     def draw_seeds(self, hole_index):
@@ -59,17 +99,23 @@ class AwaleGame:
         seeds = self.board[hole_number]
         self.board[hole_number] = 0
 
-        # Distribution des graines dans le sens inverse des aiguilles d'une montre
+        # Distribution des graines en respectant la règle des 12
         index = hole_number
+        skip_start_hole = False
         while seeds > 0:
             index = (index - 1) % 12
+            if skip_start_hole and index == hole_number:
+                index = (index - 1) % 12
+                skip_start_hole = False
             self.board[index] += 1
             seeds -= 1
+            if seeds == hole_number:
+                skip_start_hole = True
 
         # Vérifie si on peut capturer les graines de l'adversaire
         opponent_range = range(6, 12) if self.current_player == 0 else range(0, 6)
         captured_seeds = 0
-        while index in opponent_range and 2 <= self.board[index] <= 3:
+        while index in opponent_range and (self.board[index] == 2 or self.board[index] == 3):
             captured_seeds += self.board[index]
             self.board[index] = 0
             index = (index - 1) % 12
@@ -91,6 +137,8 @@ class AwaleGame:
         for i in range(12):
             self.draw_seeds(i)
         self.update_score_and_turn()
+
+        return captured_seeds
 
     def update_score_and_turn(self):
         self.score_label.config(text=f"Score: {self.scores[0]} - {self.scores[1]}")
@@ -124,8 +172,51 @@ class AwaleGame:
         winner = "Joueur 1" if self.scores[0] > self.scores[1] else "Joueur 2" if self.scores[1] > self.scores[0] else "Pas de gagnant (égalité)"
         tk.messagebox.showinfo("Fin de la partie", f"La partie est terminée !\n\n{winner} a gagné !")
 
+    def get_state(self):
+        return tuple(self.board + [self.current_player])
+
+    def get_available_actions(self):
+        return [i for i in range(6 * self.current_player, 6 * (self.current_player + 1))]
+
+    def get_reward(self, captured_seeds):
+        # Vous pouvez ajuster cette fonction de récompense selon vos besoins
+        return captured_seeds
+
+    def play_with_agent(self, agent1, agent2):
+        if not self.is_game_over():
+            state = self.get_state()
+            available_actions = self.get_available_actions()
+            if self.current_player == 0:
+                action = agent1.choose_action(state, available_actions)
+            else:
+                action = agent2.choose_action(state, available_actions)
+            captured_seeds = self.on_hole_click(action)
+            reward = self.get_reward(captured_seeds)
+            next_state = self.get_state()
+            next_actions = self.get_available_actions()
+            if self.current_player == 0:
+                agent1.learn(state, action, reward, next_state, next_actions)
+            else:
+                agent2.learn(state, action, reward, next_state, next_actions)
+            self.update_score_and_turn()
+            
+            # Introduire une pause de 1 seconde (1000 millisecondes) avant la prochaine action
+            self.master.after(1000, lambda: self.play_with_agent(agent1, agent2))
+
+
+    def is_game_over(self):
+        # Vous pouvez ajouter une logique pour vérifier si le jeu est terminé
+        pass
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     game = AwaleGame(root)
+    agent1 = QLearningAgent()
+    agent2 = QLearningAgent()
+    
+    # Démarrer le jeu après 1000 millisecondes (1 seconde)
+    root.after(1000, lambda: game.play_with_agent(agent1, agent2))
+    
     root.mainloop()
+
