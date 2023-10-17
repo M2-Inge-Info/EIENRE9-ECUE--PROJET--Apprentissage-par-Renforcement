@@ -32,7 +32,12 @@ class Partie(object):
         if not self.fin:
             return None
         else:
-            return (1 if self.score[0]>self.score[1] else 2)
+            if self.score[0]>self.score[1]:
+                return 1
+            elif self.score[0]<self.score[1]:
+                return 2
+            else:
+                return 0
     
     def get_state(self):
         """Renvoie l'état actuel du jeu."""
@@ -80,6 +85,10 @@ class Partie(object):
                 self.score[1]+= sum(self.liste)
             self.liste = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             self.fin = True
+        # Si le score d'un des joueurs atteint 25, la partie est terminée
+        if self.score[0]>=25 or self.score[1]>=25:
+            self.fin = True
+
         return self.gain
     
     def jouer(self):
@@ -104,7 +113,10 @@ class Partie(object):
             if self.gain!=0:
                 print("+1 point" if self.gain==1 else "+ %s points" %str(self.gain))
         print("Partie terminée.")
-        print("Le joueur n° %s a gagné." %str(self.vainqueur))
+        if self.vainqueur != 0:
+            print("Le joueur n° %s a gagné." %str(self.vainqueur))
+        else:
+            print("Egalité.")
 
 class Application(Tk):
     """Classe gérant l'interface graphique pour le jeu d'awalé"""
@@ -139,7 +151,7 @@ class Application(Tk):
         self.debut_jeu()
 
         self.agent1 = QLearningAgent()
-        self.agent2 = QLearningAgent()
+        self.agent2 = RandomAgent()
         self.random_agent = RandomAgent()
 
         self.play_with_agents()
@@ -186,11 +198,12 @@ class Application(Tk):
         if not self.p.fin:
             state = self.p.get_state()
             available_actions = self.p.get_available_actions()
+
             if self.p.joueur1:
                 action = self.agent1.choose_action(state, available_actions)
             else:
                 # Utilisez l'agent aléatoire pour le joueur 2
-                action = self.random_agent.choose_action(state, available_actions)
+                action = self.agent2.choose_action(state, available_actions)
             
             reward = self.p.coup(action)
             next_state = self.p.get_state()
@@ -201,7 +214,7 @@ class Application(Tk):
             # Pas besoin d'apprendre pour l'agent aléatoire
             
             self.update_ui()
-            self.after(200, self.play_with_agents)  # Continuez à jouer après 1 seconde
+            self.after(100, self.play_with_agents)  # Continuez à jouer après 1 seconde
 
     
     def ecrire_nombres(self, liste):    # Écrit les graines
