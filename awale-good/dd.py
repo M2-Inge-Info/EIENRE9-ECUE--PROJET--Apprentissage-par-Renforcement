@@ -5,6 +5,7 @@ from tkinter import *
 import numpy as np
 
 from QLearningAgent import QLearningAgent
+from ValueApproximationAgent import ValueFunctionApproximation
 from agents.RandomAgent import RandomAgent
 
 class Partie(object):
@@ -40,8 +41,13 @@ class Partie(object):
                 return 0
     
     def get_state(self):
-        """Renvoie l'état actuel du jeu."""
-        return tuple(self.liste + [self.joueur1])
+        """Renvoie l'état actuel du jeu sous forme de quatre caractéristiques."""
+        board = self.liste
+        score_player1 = self.score[0]
+        score_player2 = self.score[1]
+        current_player = 1 if self.joueur1 else 2  # Assignez 1 au joueur 1 et 2 au joueur 2
+        return board, score_player1, score_player2, current_player
+
 
     def get_available_actions(self):
         """Renvoie les actions disponibles pour le joueur actuel."""
@@ -119,44 +125,43 @@ class Partie(object):
             print("Egalité.")
 
 class Application(Tk):
-    """Classe gérant l'interface graphique pour le jeu d'awalé"""
     def __init__(self):
         Tk.__init__(self)
         self.title("Jeu d'awalé")
-        self.resizable(0,0)
-        barre_menu = Menu(self)        # Menus
+        self.resizable(0, 0)
+        barre_menu = Menu(self)  # Menus
         menu_jeu = Menu(barre_menu, tearoff=0)
         barre_menu.add_cascade(label="Jeu", menu=menu_jeu)
         menu_jeu.add_command(label="(Re)commencer une partie", command=self.debut_jeu)
         menu_jeu.add_separator()
         menu_jeu.add_command(label="Quitter", command=self.destroy)
         self.config(menu=barre_menu)
-        self.canvas = Canvas(self, width=555, height=350)   # Grand canvas et plateau
+        self.canvas = Canvas(self, width=555, height=350)  # Grand canvas et plateau
         self.canvas.create_rectangle(0, 70, 555, 280, fill='black')
-        liste_lettres1 = ["a","b","c","d","e","f"]
-        liste_lettres2 = ["A","B","C","D","E","F"]
+        liste_lettres1 = ["a", "b", "c", "d", "e", "f"]
+        liste_lettres2 = ["A", "B", "C", "D", "E", "F"]
         for i in range(6):
-            self.canvas.create_oval(i*90+15, 85, i*90+90, 160, fill='brown')
-            self.canvas.create_text(i*90+15, 85, text=liste_lettres1[i], font=('serif', 13), fill='green')
-            self.canvas.create_oval(i*90+15, 190, i*90+90, 265, fill='brown')
-            self.canvas.create_text(i*90+15, 190, text=liste_lettres2[i], font=('serif', 11), fill='green')
+            self.canvas.create_oval(i * 90 + 15, 85, i * 90 + 90, 160, fill='brown')
+            self.canvas.create_text(i * 90 + 15, 85, text=liste_lettres1[i], font=('serif', 13), fill='green')
+            self.canvas.create_oval(i * 90 + 15, 190, i * 90 + 90, 265, fill='brown')
+            self.canvas.create_text(i * 90 + 15, 190, text=liste_lettres2[i], font=('serif', 11), fill='green')
         self.canvas.create_line(10, 175, 540, 175, fill='brown')
         self.canvas.pack(side=LEFT, padx=3, pady=3)
-        self.id_joueur = None       # Identifiants (pour pouvoir supprimer)
-        self.id_correctif = None
-        self.ids_nombres = []
-        self.ids_joueurs = []
+
         self.id_couronne = None
-        self.canvas.bind('<Button-1>', self.detection_coup)
-        self.debut_jeu()
+        self.ids_nombres = []  # Initialisez ids_nombres à une liste vide
+        self.ids_joueurs = []  # Initialisez ids_joueurs à une liste vide
 
+        self.debut_jeu()  # Déplacez cette ligne ici
+
+        # Assurez-vous que self.p est maintenant défini
+        self.extract_features = self.p.get_state
         self.agent1 = QLearningAgent()
-        self.agent2 = RandomAgent()
-        self.random_agent = RandomAgent()
+        self.agent2 = ValueFunctionApproximation(self.extract_features)
 
-        self.play_with_agents()
+
         
-    def debut_jeu(self):        # Au début d'une partie
+    def debut_jeu(self):
         self.p = Partie()
         if self.id_couronne:
             self.canvas.delete(self.id_couronne)
@@ -202,17 +207,21 @@ class Application(Tk):
             if self.p.joueur1:
                 action = self.agent1.choose_action(state, available_actions)
             else:
-                # Utilisez l'agent aléatoire pour le joueur 2
                 action = self.agent2.choose_action(state, available_actions)
-            
+
             reward = self.p.coup(action)
             next_state = self.p.get_state()
             next_actions = self.p.get_available_actions()
-            
+
             if self.p.joueur1:
                 self.agent1.learn(state, action, reward, next_state, next_actions)
             # Pas besoin d'apprendre pour l'agent aléatoire
-            
+
+            # Mettez à jour la Value Function Approximation après chaque coup
+            learning_rate = 0.1  # Taux d'apprentissage
+            target = reward + self.agent2.predict(next_state)
+            self.agent2.update_weights(state, target)
+
             self.update_ui()
             self.after(100, self.play_with_agents)  # Continuez à jouer après 1 seconde
 
