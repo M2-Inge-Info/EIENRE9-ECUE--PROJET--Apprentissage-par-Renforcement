@@ -151,15 +151,15 @@ class Application(Tk):
         self.canvas.bind('<Button-1>', self.detection_coup)
 
         # self.choose_adversaries()
-        self.debut_jeu()
+        # self.debut_jeu()
 
-        self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
-        # self.agent1 = RandomAgent()
-        self.agent2 = QLearningAgent()
+        # self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
+        self.agent2 = RandomAgent()
+        self.agent1 = QLearningAgent()
 
-        self.random_agent = RandomAgent()
+        # self.random_agent = RandomAgent()
 
-        self.play_with_agents()
+        # self.play_with_agents()
 
 
     def choose_adversaries(self):
@@ -259,9 +259,6 @@ class Application(Tk):
             self.debut_jeu()
             while not self.p.fin:
                 self.play_with_agents()
-                # Si vous souhaitez visualiser chaque partie pendant l'entraînement :
-                self.update_ui()
-                self.after(100, self.play_with_agents)  # Pause pour visualisation
 
             # Sauvegarde des agents après chaque partie (ou après un certain nombre de parties)
             # self.agent1.save()
@@ -324,4 +321,6 @@ class Application(Tk):
             self.couronne()
 
 if __name__ == '__main__':
-    Application().mainloop()
+    app = Application()
+    app.train_agents()
+    app.mainloop()
