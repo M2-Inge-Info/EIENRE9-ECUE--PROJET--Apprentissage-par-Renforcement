@@ -6,6 +6,7 @@ import numpy as np
 
 from QLearningAgent import QLearningAgent
 from agents.RandomAgent import RandomAgent
+from ValueApproximationAgent import ValueFunctionApproximation
 
 class Partie(object):
     """Gère l'ensemble des opérations sur les grains"""
@@ -148,14 +149,73 @@ class Application(Tk):
         self.ids_joueurs = []
         self.id_couronne = None
         self.canvas.bind('<Button-1>', self.detection_coup)
+
+        # self.choose_adversaries()
         self.debut_jeu()
 
-        self.agent1 = QLearningAgent()
-        self.agent2 = RandomAgent()
+        self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
+        # self.agent1 = RandomAgent()
+        self.agent2 = QLearningAgent()
+
         self.random_agent = RandomAgent()
 
         self.play_with_agents()
-        
+
+
+    def choose_adversaries(self):
+        # Créez une nouvelle fenêtre pour la sélection des adversaires
+        self.choice_window = Toplevel(self)
+        self.choice_window.title("Choisir les adversaires")
+
+        # Ajoutez des boutons radio ou une liste déroulante pour sélectionner les adversaires
+        # Pour cet exemple, je vais utiliser des boutons radio
+        self.agent1_choice = StringVar(value="ValueFunctionApproximation")
+        self.agent2_choice = StringVar(value="QLearningAgent")
+
+        Label(self.choice_window, text="Choisir l'adversaire pour le joueur 1:").pack(pady=10)
+        Radiobutton(self.choice_window, text="ValueFunctionApproximation", variable=self.agent1_choice, value="ValueFunctionApproximation").pack(anchor=W)
+        Radiobutton(self.choice_window, text="RandomAgent", variable=self.agent1_choice, value="RandomAgent").pack(anchor=W)
+
+        Label(self.choice_window, text="Choisir l'adversaire pour le joueur 2:").pack(pady=10)
+        Radiobutton(self.choice_window, text="QLearningAgent", variable=self.agent2_choice, value="QLearningAgent").pack(anchor=W)
+        Radiobutton(self.choice_window, text="RandomAgent", variable=self.agent2_choice, value="RandomAgent").pack(anchor=W)
+
+        Button(self.choice_window, text="Commencer", command=self.start_game).pack(pady=20)
+
+    def start_game(self):
+        # Ici, vous pouvez initialiser vos agents en fonction des choix
+        if self.agent1_choice.get() == "ValueFunctionApproximation":
+            self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
+        elif self.agent1_choice.get() == "RandomAgent":
+            self.agent1 = RandomAgent()
+
+        if self.agent2_choice.get() == "QLearningAgent":
+            self.agent2 = QLearningAgent()
+        elif self.agent2_choice.get() == "RandomAgent":
+            self.agent2 = RandomAgent()
+
+        # Fermez la fenêtre de choix
+        self.choice_window.destroy()
+
+        # Commencez le jeu
+        self.play_with_agents()
+
+    def end_game(self):
+        # À la fin du jeu, affichez un bouton "Quitter"
+        Button(self, text="Quitter", command=self.quit_game).pack(pady=20)
+
+    def quit_game(self):
+        # Fermez l'application
+        self.destroy()
+
+    def extract_features(self, state_action):
+        state, action = state_action
+        features = {}
+        for i, s in enumerate(state):
+            features[f"state_{i}"] = s
+        features["action"] = action
+        return features
+
     def debut_jeu(self):        # Au début d'une partie
         self.p = Partie()
         if self.id_couronne:
@@ -194,6 +254,19 @@ class Application(Tk):
             self.after(200, self.play_with_agents)
         self.update_ui()
 
+    def train_agents(self, num_games=100):
+        for game in range(num_games):
+            self.debut_jeu()
+            while not self.p.fin:
+                self.play_with_agents()
+                # Si vous souhaitez visualiser chaque partie pendant l'entraînement :
+                self.update_ui()
+                self.after(100, self.play_with_agents)  # Pause pour visualisation
+
+            # Sauvegarde des agents après chaque partie (ou après un certain nombre de parties)
+            # self.agent1.save()
+            # self.agent2.save()
+
     def play_with_agents(self):
         if not self.p.fin:
             state = self.p.get_state()
@@ -211,7 +284,8 @@ class Application(Tk):
             
             if self.p.joueur1:
                 self.agent1.learn(state, action, reward, next_state, next_actions)
-            # Pas besoin d'apprendre pour l'agent aléatoire
+            else:
+                self.agent2.learn(state, action, reward, next_state, next_actions)
             
             self.update_ui()
             self.after(100, self.play_with_agents)  # Continuez à jouer après 1 seconde

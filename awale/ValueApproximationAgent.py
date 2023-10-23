@@ -1,18 +1,20 @@
 from collections import defaultdict
 
 class ValueFunctionApproximation:
-    def __init__(self, feature_extractor, learning_rate=0.1):
-        self.feature_extractor = feature_extractor  # Assurez-vous que feature_extractor est une fonction
+    def __init__(self, feature_extractor, learning_rate=0.1, discount_factor=0.9):
+        self.feature_extractor = feature_extractor
         self.learning_rate = learning_rate
         self.weights = defaultdict(float)
+        self.discount_factor = discount_factor  # Ajout de cette ligne
 
-    def predict(self, state):
-        features = self.extract_features(state)
+
+    def predict(self, state_action):
+        features = self.feature_extractor(state_action)
         value = sum(self.weights[feature] * value for feature, value in features.items())
         return value
 
-    def update_weights(self, state, target):
-        features = self.feature_extractor(state)
+    def update_weights(self, state_action, target):
+        features = self.feature_extractor(state_action)
         prediction = sum(self.weights[feature] * value for feature, value in features.items())
         error = target - prediction
 
@@ -20,46 +22,26 @@ class ValueFunctionApproximation:
             self.weights[feature] += self.learning_rate * error * value
 
     def choose_action(self, state, available_actions):
-        # Choose the action with the highest estimated value
         best_action = None
         best_value = float('-inf')
 
         for action in available_actions:
             state_action = (state, action)
-            value = self.predict(state_action)
+            value = self.predict(state_action)  # Modification ici
             if value > best_value:
                 best_action = action
                 best_value = value
 
         return best_action
 
-    def extract_features(self, state):
-        """
-        Extracts features from the game state.
-        Args:
-            state: A tuple representing the game state. For example, (board, score_player1, score_player2, current_player).
-        Returns:
-            A dictionary of features.
-        """
-        board, score_player1, score_player2, current_player = state
+    def learn(self, state, action, reward, next_state, next_actions):
+        # Vérifiez si reward est None et définissez une valeur par défaut si nécessaire
+        if reward is None:
+            reward = 0.0  # ou toute autre valeur par défaut que vous jugez appropriée
 
-        features = {}
+        # Calculer la valeur cible
+        next_values = [self.predict((next_state, next_action)) for next_action in next_actions]
+        target_value = reward + self.discount_factor * max(next_values, default=0)
 
-        for i, seeds in enumerate(board):
-            features[f'board_{i}'] = seeds
-
-        features['score_player1'] = score_player1
-        features['score_player2'] = score_player2
-
-        features['current_player'] = current_player
-
-        capture_possible = 0
-        for i in range(6):
-            if current_player == 1 and 0 < board[i] <= 6 - i:
-                capture_possible = 1
-            elif current_player == 2 and 0 < board[i + 6] <= 12 - i:
-                capture_possible = 1
-
-        features['capture_possible'] = capture_possible
-
-        return features
+        # Mettre à jour les poids
+        self.update_weights((state, action), target_value)

@@ -30,6 +30,9 @@ class QLearningAgent:
         batch = random.sample(self.memory, self.batch_size)
         
         for state, action, reward, next_state, next_actions in batch:
+            if not next_actions:  # Si next_actions est vide, passez à l'itération suivante
+                continue
+
             if np.random.rand() < 0.5:
                 next_max_action = max(next_actions, key=lambda a: self.Q1[(next_state, a)])
                 target_Q = reward + self.gamma * self.Q2[(next_state, next_max_action)]
@@ -38,6 +41,7 @@ class QLearningAgent:
                 next_max_action = max(next_actions, key=lambda a: self.Q2[(next_state, a)])
                 target_Q = reward + self.gamma * self.Q1[(next_state, next_max_action)]
                 self.Q2[(state, action)] += self.alpha * (target_Q - self.Q2[(state, action)])
+
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
