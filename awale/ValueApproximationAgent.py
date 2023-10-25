@@ -1,4 +1,5 @@
 from collections import defaultdict
+import pickle
 
 class ValueFunctionApproximation:
     def __init__(self, feature_extractor, learning_rate=0.1, discount_factor=0.9):
@@ -45,3 +46,14 @@ class ValueFunctionApproximation:
 
         # Mettre à jour les poids
         self.update_weights((state, action), target_value)
+    
+
+    def save_weights(self, file_path):
+        with open(file_path, 'wb') as file:
+            pickle.dump(self.weights, file)
+            
+
+    def load_weights(self, file_path):
+        with open(file_path, 'rb') as file:
+            loaded_weights = pickle.load(file)
+            self.weights = loaded_weights

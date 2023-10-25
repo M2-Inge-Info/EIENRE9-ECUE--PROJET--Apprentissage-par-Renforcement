@@ -1,6 +1,7 @@
 from collections import defaultdict, deque
 import numpy as np
 import random
+import pickle
 
 class QLearningAgent:
     def __init__(self, alpha=0.1, gamma=0.9, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, batch_size=32, memory_size=1000, alpha_decay=0.995):
@@ -73,3 +74,14 @@ class QLearningAgent:
 
         # Adaptive Learning Rate
         self.alpha *= self.alpha_decay
+
+    
+    def save_weights(self, file_path):
+        with open(file_path, 'wb') as file:
+            pickle.dump(self.weights, file)
+            
+
+    def load_weights(self, file_path):
+        with open(file_path, 'rb') as file:
+            loaded_weights = pickle.load(file)
+            self.weights = loaded_weights

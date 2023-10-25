@@ -87,7 +87,7 @@ class Partie(object):
             self.liste = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             self.fin = True
         # Si le score d'un des joueurs atteint 25, la partie est terminée
-        if self.score[0]>=25 or self.score[1]>=25:
+        if self.score[0]>=25 or self.score[1]>=25 or (self.score[0]>=24 and self.score[1]>=24):
             self.fin = True
 
         return self.gain
@@ -153,13 +153,35 @@ class Application(Tk):
         # self.choose_adversaries()
         self.debut_jeu()
 
-        # self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
+        self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
         self.agent2 = RandomAgent()
-        self.agent1 = QLearningAgent()
+
+        # self.train_agent(1000)
+
+        # self.agent1 = QLearningAgent()
 
         # self.random_agent = RandomAgent()
 
         self.play_with_agents()
+    
+    def train_agent(self, num_games):
+        for _ in range(num_games):
+            partie = Partie()  # Initialisez une nouvelle partie
+            while not partie.fin:
+                state = partie.get_state()
+                available_actions = partie.get_available_actions()
+                action = self.agent1.choose_action(state, available_actions)
+                reward = partie.coup(action)
+                next_state = partie.get_state()
+                next_actions = partie.get_available_actions()
+                self.agent1.learn(state, action, reward, next_state, next_actions)
+            # Sauvegardez les poids de l'agent après chaque partie (si nécessaire)
+            self.agent1.save_weights("agent_weights.pkl")
+
+            # Affiche le pourcentage de train achevé tout les 5%
+            if _%(num_games//20)==0:
+                print("%s%% achevé" %str(_//(num_games//100)))
+            
 
 
     def choose_adversaries(self):
@@ -254,15 +276,6 @@ class Application(Tk):
             self.after(200, self.play_with_agents)
         self.update_ui()
 
-    # def train_agents(self, num_games=100):
-    #     for game in range(num_games):
-    #         self.debut_jeu()
-    #         while not self.p.fin:
-    #             self.play_with_agents()
-
-    #         # Sauvegarde des agents après chaque partie (ou après un certain nombre de parties)
-    #         # self.agent1.save()
-    #         # self.agent2.save()
 
     def play_with_agents(self):
         if not self.p.fin:
