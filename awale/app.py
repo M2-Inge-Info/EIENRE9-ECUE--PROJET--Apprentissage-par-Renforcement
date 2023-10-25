@@ -151,7 +151,7 @@ class Application(Tk):
         self.canvas.bind('<Button-1>', self.detection_coup)
 
         # self.choose_adversaries()
-        # self.debut_jeu()
+        self.debut_jeu()
 
         # self.agent1 = ValueFunctionApproximation(self.extract_features, learning_rate=0.1, discount_factor=0.9)
         self.agent2 = RandomAgent()
@@ -159,7 +159,7 @@ class Application(Tk):
 
         # self.random_agent = RandomAgent()
 
-        # self.play_with_agents()
+        self.play_with_agents()
 
 
     def choose_adversaries(self):
@@ -254,15 +254,15 @@ class Application(Tk):
             self.after(200, self.play_with_agents)
         self.update_ui()
 
-    def train_agents(self, num_games=100):
-        for game in range(num_games):
-            self.debut_jeu()
-            while not self.p.fin:
-                self.play_with_agents()
+    # def train_agents(self, num_games=100):
+    #     for game in range(num_games):
+    #         self.debut_jeu()
+    #         while not self.p.fin:
+    #             self.play_with_agents()
 
-            # Sauvegarde des agents après chaque partie (ou après un certain nombre de parties)
-            # self.agent1.save()
-            # self.agent2.save()
+    #         # Sauvegarde des agents après chaque partie (ou après un certain nombre de parties)
+    #         # self.agent1.save()
+    #         # self.agent2.save()
 
     def play_with_agents(self):
         if not self.p.fin:
@@ -321,6 +321,4 @@ class Application(Tk):
             self.couronne()
 
 if __name__ == '__main__':
-    app = Application()
-    app.train_agents()
-    app.mainloop()
+    Application().mainloop()
