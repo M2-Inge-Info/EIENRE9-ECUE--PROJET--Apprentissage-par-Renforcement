@@ -55,12 +55,14 @@ class Application(Tk):
         agent_colors = {
             "Human": ("blue", "lightblue"),
             "QLearning": ("green", "lightgreen"),
-            "VFA": ("red", "#FF8080"),  # Utilisation d'une valeur hexadécimale pour une teinte de rouge clair
-            "MCTS": ("purple", "plum")
+            "VFA": ("red", "#FF8080"),
+            "MCTS": ("purple", "plum"),
+            "Random": ("orange", "lightyellow")  # Ajoutez cette ligne pour inclure le RandomAgent
         }
         Label(self, text=label_text).pack(pady=10)
         for agent_type, (fg_color, bg_color) in agent_colors.items():
             Radiobutton(self, text=agent_type, variable=agent_choice_var, value=agent_type, foreground=fg_color, selectcolor=bg_color).pack(anchor=W)
+
 
     def replay_game(self):
         """Redémarre le jeu."""
@@ -80,12 +82,14 @@ class Application(Tk):
             "Human": HumanAgent,
             "QLearning": QLearningAgent,
             "VFA": lambda: ValueFunctionApproximation(feature_extractor=self.extract_features),
-            "MCTS": MCTSAgent
+            "MCTS": MCTSAgent,
+            "Random": RandomAgent  # Ajoutez cette ligne pour inclure le RandomAgent
         }
         self.agent1 = agent_mapping[self.agent1_choice.get()]()
         self.agent2 = agent_mapping[self.agent2_choice.get()]()
         self.agent_info_label.config(text=f"Agent 1: {self.agent1_choice.get()} vs Agent 2: {self.agent2_choice.get()}")
         self.play_with_agents()
+
 
     def debut_jeu(self):
         self.p = Partie()
