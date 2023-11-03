@@ -8,6 +8,9 @@ from agents.HumanAgent import HumanAgent
 from agents.MCTSAgent import MCTSAgent
 from services.Partie import Partie
 
+import gdown
+import os
+
 class Application(Tk):
     """Classe gérant l'interface graphique pour le jeu d'awalé"""
     def __init__(self):
@@ -87,9 +90,27 @@ class Application(Tk):
         }
         self.agent1 = agent_mapping[self.agent1_choice.get()]()
         self.agent2 = agent_mapping[self.agent2_choice.get()]()
+        
+        # Téléchargez et chargez les poids de l'agent depuis Google Drive
+        self.load_agent_weights(self.agent1, self.agent1_choice.get())
+        # self.load_agent_weights(self.agent2, self.agent2_choice.get())
+        
         self.agent_info_label.config(text=f"Agent 1: {self.agent1_choice.get()} vs Agent 2: {self.agent2_choice.get()}")
         self.play_with_agents()
 
+    def load_agent_weights(self, agent, agent_type):
+        file_ids = {
+            "QLearning": "1TBlwG6CgVPBt6crlSSCV_CrUXKuCxDT-",
+            "VFA": "1mJ01KAFL250JZp86HID3I0MCA2fFV0H0",
+            "MCTS": "1Ubl6xIXcTAtrO8saQFo4IIA5pVdADHhn"
+        }
+        if agent_type in file_ids:
+            output = f"{agent_type}_weights.pkl"
+            if not os.path.exists(output):
+                file_id = file_ids[agent_type]
+                url = f"https://drive.google.com/uc?id={file_id}"
+                gdown.download(url, output, quiet=False)
+            agent.load(output)
 
     def debut_jeu(self):
         self.p = Partie()

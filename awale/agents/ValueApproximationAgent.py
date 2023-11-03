@@ -107,7 +107,7 @@ class ValueFunctionApproximation:
         with open(file_path, 'wb') as file:
             pickle.dump(self.weights, file)
 
-    def load_weights(self, file_path):
+    def load(self, file_path):
         """
         Charge les poids à partir d'un fichier.
 

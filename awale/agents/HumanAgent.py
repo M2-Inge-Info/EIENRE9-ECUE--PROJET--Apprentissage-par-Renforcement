@@ -1,3 +1,9 @@
+"""
+HumanAgent: Une classe représentant un joueur humain dans le jeu.
+        
+Auteur: GR Awalé
+"""
+    
 class HumanAgent:
     def __init__(self):
         pass
