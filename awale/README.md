@@ -57,3 +57,6 @@ Il faut commencer par instancier comme expliqué plus haut.
 ### La seule méthode utile de la classe `Partie`
 
 * _Partie_.**coup(_trou_depart_)** - Cette méthode prend en argument le rang de la case à jouer et effectue toutes les opérations d'un tour (semaille, récolte, test de fin...)
+
+
+Slides : https://docs.google.com/presentation/d/1iYsg7xhLPFG0QvD_EEQq098LL-MSqa0-KgJs2q1lDV4/edit?usp=sharing

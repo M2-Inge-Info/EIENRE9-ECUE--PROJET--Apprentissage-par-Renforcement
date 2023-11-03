@@ -1,85 +1,78 @@
-from collections import defaultdict, deque
+# QLearningAgent.py
+"""
+QLearningAgent: Un agent qui utilise l'algorithme Q-Learning pour jouer au jeu Awalé.
+
+Auteur: GR Awalé
+"""
+
 import numpy as np
-import random
+from collections import defaultdict
 import pickle
 
+
 class QLearningAgent:
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, batch_size=32, memory_size=1000, alpha_decay=0.995):
+    """
+    Classe représentant un agent utilisant l'algorithme Q-Learning pour prendre des décisions dans le jeu Awalé.
+    """
+
+    def __init__(self, alpha=0.05, gamma=0.95, epsilon=0.1, epsilon_decay=0.995):
+        """
+        Initialise l'agent Q-Learning.
+
+        :param alpha: Taux d'apprentissage.
+        :param gamma: Facteur d'escompte.
+        :param epsilon: Probabilité d'exploration.
+        :param epsilon_decay: Taux de dégradation d'epsilon.
+        """
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
+        self.epsilon_min = 0.01
         self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min
-        self.Q1 = defaultdict(float)
-        self.Q2 = defaultdict(float)
-        self.memory = deque(maxlen=memory_size)
-        self.batch_size = batch_size
-        self.alpha_decay = alpha_decay
-        self.priority_beta = 0.4
-        self.priority_epsilon = 1e-6
-        self.priorities = defaultdict(float)
+        self.Q = defaultdict(float)
 
     def choose_action(self, state, available_actions):
-        if np.random.uniform(0, 1) < self.epsilon:
-            return np.random.choice(available_actions)
-        # Average Q-values from both tables
-        avg_Q = lambda action: (self.Q1[(state, action)] + self.Q2[(state, action)]) / 2
-        return max(available_actions, key=avg_Q)
+        """
+        Choisis une action à partir de l'état actuel en utilisant la politique epsilon-greedy.
+
+        :param state: État actuel du jeu.
+        :param available_actions: Actions disponibles dans l'état actuel.
+        :return: Action choisie.
+        """
+
+        Q_values = [self.Q[(state, a)] for a in available_actions]
+        max_Q = max(Q_values)
+        return available_actions[np.random.choice([i for i, j in enumerate(Q_values) if j == max_Q])]
 
     def learn(self, state, action, reward, next_state, next_actions):
-        self.memory.append((state, action, reward, next_state, next_actions))
-        
-        if len(self.memory) < self.batch_size:
-            return
+        """
+        Met à jour la table Q en utilisant l'équation de mise à jour Q-Learning.
 
-        # Prioritized Experience Replay
-        probabilities = np.array([self.priorities[(state, action)] for state, action, _, _, _ in self.memory])
-        total_prob = np.sum(probabilities)
+        :param state: État actuel.
+        :param action: Action effectuée.
+        :param reward: Récompense reçue.
+        :param next_state: État suivant.
+        :param next_actions: Actions disponibles dans l'état suivant.
+        """
+        max_next_Q = max([self.Q[(next_state, a)] for a in next_actions]) if next_actions else 0
+        self.Q[(state, action)] += self.alpha * (reward + self.gamma * max_next_Q - self.Q[(state, action)])
+        # if self.epsilon > self.epsilon_min:
+        #     self.epsilon *= self.epsilon_decay
 
-        # Check if total_prob is zero or NaN
-        if total_prob == 0 or np.isnan(total_prob):
-            # Handle this case, e.g., by setting equal probabilities
-            probabilities = np.ones_like(probabilities) / len(self.memory)
-        else:
-            probabilities /= total_prob
+    def save(self, filename):
+        """
+        Sauvegarde la table Q et les paramètres d'epsilon dans un fichier.
 
-        # Check for NaN values in probabilities
-        if np.any(np.isnan(probabilities)):
-            print("Warning: NaN values detected in probabilities!")
-            probabilities = np.ones_like(probabilities) / len(self.memory)
+        :param filename: Nom du fichier dans lequel sauvegarder les données.
+        """
+        with open(filename, 'wb') as f:
+            pickle.dump((self.Q, self.epsilon), f)
 
-        batch_indices = np.random.choice(len(self.memory), self.batch_size, p=probabilities)
-        batch = [self.memory[i] for i in batch_indices]
+    def load(self, filename):
+        """
+        Charge la table Q et les paramètres d'epsilon à partir d'un fichier.
 
-        for idx, (state, action, reward, next_state, next_actions) in enumerate(batch):
-            if not next_actions:  # Si next_actions est vide, passez à l'itération suivante
-                continue
-
-            if np.random.rand() < 0.5:
-                next_max_action = max(next_actions, key=lambda a: self.Q1[(next_state, a)])
-                target_Q = reward + self.gamma * self.Q2[(next_state, next_max_action)]
-                td_error = target_Q - self.Q1[(state, action)]
-                self.Q1[(state, action)] += self.alpha * td_error
-            else:
-                next_max_action = max(next_actions, key=lambda a: self.Q2[(next_state, a)])
-                target_Q = reward + self.gamma * self.Q1[(next_state, next_max_action)]
-                td_error = target_Q - self.Q2[(state, action)]
-                self.Q2[(state, action)] += self.alpha * td_error
-
-            # Update priorities
-            self.priorities[(state, action)] = abs(td_error) + self.priority_epsilon
-
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-
-        # Adaptive Learning Rate
-        self.alpha *= self.alpha_decay
-
-    
-    def save_weights(self, file_path):
-        with open(file_path, 'wb') as file:
-            pickle.dump((self.Q1, self.Q2), file)  # Sauvegardez les deux tables Q
-
-    def load_weights(self, file_path):
-        with open(file_path, 'rb') as file:
-            self.Q1, self.Q2 = pickle.load(file) 
+        :param filename: Nom du fichier à partir duquel charger les données.
+        """
+        with open(filename, 'rb') as f:
+            self.Q, self.epsilon = pickle.load(f)

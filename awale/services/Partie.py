@@ -1,9 +1,35 @@
+# Partie.py
+"""
+Partie: Classe gérant une partie du jeu d'Awalé.
+
+Auteur: GR Awalé
+"""
+
 from tkinter import *
 import numpy as np
 
-
 class Partie(object):
-    """Gère l'ensemble des opérations sur les grains"""
+    """
+    Classe gérant une partie du jeu d'Awalé.
+
+    Attributs:
+        liste (list): Liste des trous contenant le nombre de graines.
+        joueur1 (bool): Indique si c'est au tour du joueur 1 de jouer.
+        fin (bool): Indique si la partie est terminée.
+        score (list): Liste contenant les scores des deux joueurs.
+        previous_states (set): Ensemble des états précédents pour détecter les répétitions.
+
+    Méthodes:
+        - jouables: Renvoie la liste des trous jouables.
+        - vainqueur: Renvoie le vainqueur de la partie.
+        - get_state: Renvoie l'état actuel du jeu.
+        - get_available_actions: Renvoie les actions disponibles pour le joueur actuel.
+        - get_reward: Renvoie la récompense pour l'état actuel.
+        - coup: Effectue les semailles et les récoltes à partir d'un trou de départ.
+        - jouer: Permet de jouer en mode non-graphique.
+        - reset: Réinitialise la partie à l'état initial.
+    """
+    
     def __init__(self):
         self.liste = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
         self.joueur1 = True     # Est vrai si c'est au joueur 1 de jouer
@@ -44,34 +70,44 @@ class Partie(object):
         """Renvoie les actions disponibles pour le joueur actuel."""
         return self.jouables
 
-    def get_reward(self, captured_seeds):
-        """Renvoie la récompense pour le joueur actuel."""
-        return captured_seeds
+    def get_reward(self):
+        if self.vainqueur is None:
+            # La partie n'est pas encore terminée
+            return self.gain  # Retournez simplement le gain actuel
+        elif self.vainqueur == 1:
+            # Le joueur 1 a gagné
+            return self.score[0] - self.score[1] + 10  # Récompensez le joueur 1 avec une récompense positive
+        elif self.vainqueur == 2:
+            # Le joueur 2 a gagné+
+            return self.score[1] - self.score[0] + 10  # Récompensez le joueur 2 avec une récompense positive
+        else:
+            # C'est une égalité
+            return 0  # Aucune récompense pour une égalité
     
     def coup(self, trou_depart):
         """Effectue les semailles et les récoltes"""
         current_state = self.get_state()
         if current_state in self.previous_states:
             self.fin = True  # Terminez la partie si l'état se répète
-            return None
+            return 0
         self.previous_states.add(current_state)
         
         if trou_depart not in self.jouables:
-            return None
+            return 0  # Retourne 0 au lieu de None
         graines = self.liste[trou_depart]   # Récupère le nombre de graines à semer
         self.liste[trou_depart] = 0
         trou = trou_depart
-        while graines>0:                    # Sème les graines
-            trou+=1
-            if trou%12!=trou_depart:
-                self.liste[trou%12] += 1
-                graines-=1
+        while graines > 0:                    # Sème les graines
+            trou += 1
+            if trou % 12 != trou_depart:
+                self.liste[trou % 12] += 1
+                graines -= 1
         prises = []
-        while (self.liste[trou%12]==2 or self.liste[trou%12]==3) and ((self.joueur1 and trou%12>5) or (not self.joueur1 and trou%12<6)):    # Calcule les prises en partant du dernier trou
-            prises.append(trou%12)
-            trou-=1
+        while (self.liste[trou % 12] == 2 or self.liste[trou % 12] == 3) and ((self.joueur1 and trou % 12 > 5) or (not self.joueur1 and trou % 12 < 6)):    # Calcule les prises en partant du dernier trou
+            prises.append(trou % 12)
+            trou -= 1
         self.gain = sum([self.liste[i] for i in prises])
-        if ((self.joueur1 and len([i for i in self.liste[6:] if i==0])+len(prises)==6) or (not self.joueur1 and len([i for i in self.liste[:6] if i==0])+len(prises)==6)) or len(prises)==0:  # On ne prend pas si cela affame
+        if ((self.joueur1 and len([i for i in self.liste[6:] if i == 0]) + len(prises) == 6) or (not self.joueur1 and len([i for i in self.liste[:6] if i == 0]) + len(prises) == 6)) or len(prises) == 0:  # On ne prend pas si cela affame
             pass
         else:
             for i in prises:
@@ -80,19 +116,20 @@ class Partie(object):
                 self.score[0] += self.gain  # ...et les graines récoltés
             else:
                 self.score[1] += self.gain
-        self.joueur1 = not self.joueur1 # Changement de joueur
-        if self.jouables==():       # Fin (car le joueur ne peut plus nourrir son adversaire)
+        self.joueur1 = not self.joueur1  # Changement de joueur
+        if self.jouables == ():       # Fin (car le joueur ne peut plus nourrir son adversaire)
             if self.joueur1:
-                self.score[0]+= sum(self.liste)
+                self.score[0] += sum(self.liste)
             else:
-                self.score[1]+= sum(self.liste)
+                self.score[1] += sum(self.liste)
             self.liste = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             self.fin = True
         # Si le score d'un des joueurs atteint 25, la partie est terminée
-        if self.score[0]>=25 or self.score[1]>=25 or (self.score[0]>=24 and self.score[1]>=24):
+        if self.score[0] >= 25 or self.score[1] >= 25 or (self.score[0] >= 24 and self.score[1] >= 24):
             self.fin = True
 
         return self.gain
+
     
     def jouer(self):
         """Permet de jouer en mode non-graphique"""
@@ -120,3 +157,12 @@ class Partie(object):
             print("Le joueur n° %s a gagné." %str(self.vainqueur))
         else:
             print("Egalité.")
+            
+    def reset(self):
+        """Réinitialise la partie à l'état initial."""
+        self.liste = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+        self.joueur1 = True
+        self.fin = False
+        self.score = [0, 0]
+        self.previous_states = set()
+        return self.get_state()

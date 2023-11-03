@@ -1,48 +1,98 @@
+import matplotlib.pyplot as plt
 from services.Partie import Partie
+import numpy as np
 
-def train_QLearning_Agent(num_games, agent1, agent2):
-    for num in range(num_games):
-        print(num)
+def plot_rewards(total_rewards):
+    plt.figure(figsize=(10, 5))
+    plt.plot(total_rewards, label='Récompense par Épisode')
+    plt.xlabel('Épisode')
+    plt.ylabel('Récompense Totale')
+    plt.title('Récompense Totale par Épisode')
+    plt.legend()
+    plt.show()
+
+def calculate_reward(partie, old_state, new_state):
+    old_score_joueur1, old_score_joueur2 = old_state[-2:]
+    new_score_joueur1, new_score_joueur2 = new_state[-2:]
+    diff_score_joueur1 = new_score_joueur1 - old_score_joueur1
+    diff_score_joueur2 = new_score_joueur2 - old_score_joueur2
+    reward = diff_score_joueur1 - diff_score_joueur2
+
+    if partie.fin:
+        if partie.vainqueur == 1:
+            reward += 10
+        elif partie.vainqueur == 2:
+            reward -= 10
+        else:
+            reward += 5
+
+    return reward
+
+from collections import deque
+import random
+
+def train_QLearning_Agent(agent, env, num_episodes=10000, batch_size=128):
+    memory = deque(maxlen=50000)
     
+    for episode in range(num_episodes):
+        state = env.reset()
+        total_reward = [0, 0]
         
-        partie = Partie()  # Initialisez une nouvelle partie
-        while not partie.fin:
-            state = partie.get_state()
-            available_actions = partie.get_available_actions()
-
-            if partie.joueur1:
-                action = agent1.choose_action(state, available_actions)
-            else:
-                action = agent2.choose_action(state, available_actions)
-
-            reward = partie.coup(action)
-            next_state = partie.get_state()
-            next_actions = partie.get_available_actions()
-
-            if partie.joueur1:
-                agent1.learn(state, action, reward, next_state, next_actions)
-            else:
-                agent2.learn(state, action, reward, next_state, next_actions)
-
-        # # Sauvegardez les poids de l'agent après chaque partie (si nécessaire)
-        # Sauvegardez les poids de l'agent après chaque partie (si nécessaire)
-        if (num + 1) % 100 == 0:  # Sauvegardez les poids tous les 100 jeux par exemple
-            agent1.save_weights(f"agent1_weights_game_{num + 1}.pkl")
-
-            print(f"{(num//(num_games//100))}% achevé")
-            print(f"{(num//(num_games//100)) * 5}% achevé")  # Multipliez par 5 pour obtenir le pourcentage correct
-
-        # Charger les poids si un fichier de poids existe
-        if num != 0 and (num + 1) % 100 == 0:  # suppose que les poids sont sauvegardés tous les 100 jeux
-            agent1_file = f"agent1_weights_game_{num + 1}.pkl"
-            agent1.load_weights(agent1_file)
-
-        # Affiche le pourcentage de train achevé tout les 5%
-        if num%(num_games//20)==0:
-            print(f"{(num//(num_games//100))}% achevé")
-
-        # À la fin de chaque partie, après la boucle while not partie.fin:
-        vainqueur = partie.vainqueur  # 1 pour le joueur 1, 2 pour le joueur 2, 0 pour l'égalité
-        score_joueur1, score_joueur2 = partie.score  # Obtient les scores des deux joueurs
+        while not env.fin:
+            # Agent Q-Learning (Joueur 1)
+            available_actions = env.get_available_actions()
+            action1 = agent.choose_action(state, available_actions)
+            old_state = state
+            reward = env.coup(action1)
+            next_state = env.get_state()
+            next_available_actions = env.get_available_actions()
+            
+            if reward is not None:
+                total_reward[0] += reward
+                reward = calculate_reward(env, old_state, next_state)
+                memory.append((state, action1, reward, next_state, next_available_actions))
+            
+            if env.fin:
+                break
+            
+            # Agent Random (Joueur 2)
+            state = next_state
+            available_actions = env.get_available_actions()
+            action2 = random.choice(available_actions)
+            reward = env.coup(action2)
+            if reward is not None:
+                total_reward[1] += reward
         
-        print(f'Win : {vainqueur}')
+        # Experience Replay
+        if len(memory) >= batch_size:
+            minibatch = random.sample(memory, batch_size)
+            for state, action, reward, next_state, next_actions in minibatch:
+                agent.learn(state, action, reward, next_state, next_actions)
+        
+        print(f"Épisode: {episode}, Score: {total_reward}")
+
+def evaluate(agent, env, num_episodes=1000):
+    wins = 0
+    for episode in range(num_episodes):
+        state = env.reset()
+        while not env.fin:
+            # Agent Q-Learning (Joueur 1)
+            available_actions = env.get_available_actions()
+            action1 = agent.choose_action(state, available_actions)
+            env.coup(action1)
+            
+            if env.fin:
+                if env.vainqueur == 1:
+                    wins += 1
+                break
+            
+            # Agent Random (Joueur 2)
+            state = env.get_state()
+            available_actions = env.get_available_actions()
+            action2 = random.choice(available_actions)
+            env.coup(action2)
+            
+    win_rate = wins / num_episodes
+    print(f"Taux de victoire: {win_rate * 100:.2f}%")
+    return win_rate
+
