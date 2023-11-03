@@ -9,6 +9,8 @@ Ce projet vise à implémenter et à évaluer des agents d'apprentissage par ren
 
 Pour lancer le jeu et tester les agents, exécutez le fichier `app.py` :
 
+Il faut attendre que les fichiers se téléchargent aprés avoir lancé un nouveau agent.
+
 python app.py
 
 ## Structure du Projet
@@ -21,6 +23,9 @@ python app.py
 ## Auteurs
 
 - GR Awalé
+
+- BOUCLIER Lucas
+- DI MARTINO Jonathan
 
 ## Licence
 
